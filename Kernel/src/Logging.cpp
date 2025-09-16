@@ -9,6 +9,94 @@
 #include <Video/VideoConsole.h>
 #include <stdarg.h>
 
+/*
+Note:
+
+    The code has versions of Warning, Error, and Information that receive "unsigned long long num," but they either don't do anything useful or are incomplete. E.g.:
+    
+    "
+    void Warning(unsigned long long num) {
+    Write("\r\n[WARN] ", 255, 255, 0);
+    // Write(str);
+    }
+    
+    "
+    Possible solution:
+    This function does nothing with num. The comment // Write(str); looks like a placeholder.
+    
+    Remove it if it's not used in the project.
+    
+    If necessary, implement it correctly using Write(num, hex) as in other functions.
+    
+    Second observation:
+    
+    "Write" with unused RGB parameters:
+    
+    " void Write(const char* str, uint8_t r, uint8_t g, uint8_t b) {
+    WriteN(str, strlen(str));
+    }
+    "
+    
+    Problem:
+    The parameters r, g, and b are not used in this function. If the color isn't applied, why pass them?
+    
+    Solution:
+    If the color isn't used, remove the parameters.
+    
+    If you plan to use them in the future, leave an explanatory comment.
+
+    Third observation:
+
+    3. WriteF has complex logic that could be modularized (?)
+    
+    Problem:
+    The WriteF function has a very long and difficult-to-maintain format parser.
+    
+    Solution:
+    Extract the parser into a separate function such as ParseFormatToken(...).
+    
+    This improves readability and allows the parser to be tested separately.
+    
+    Fourth observation:
+    
+    4. "Write" for numbers could be unified
+    There are two functions for writing numbers:
+    "
+    void Write(unsigned long long num, bool hex, uint8_t r, uint8_t g, uint8_t b)
+    void Write(unsigned long long num, bool hex)
+    "
+    
+    Problem:
+    Duplicated logic. The RGB version doesn't use colors.
+    
+    Solution:
+    Unify into a single function.
+    
+    If colors are not used, remove the parameters.
+    
+    Fifth observation:
+    
+    5. "Ioctl" in "LogDevice" always returns 0 or -1
+    
+    "
+    int Ioctl(uint64_t cmd, uint64_t arg) {
+    if (cmd == TIOCGWINSZ)
+    return 0; // Intend to be a terminal
+    else
+    return -1;
+    }
+    
+    "
+    
+    Problem:
+    The function doesn't do anything useful. Is it really needed?
+    
+    Solution:
+    If the device doesn't need Ioctl, consider removing it.
+    
+    If it's required for compatibility, leave a comment explaining why.
+*/
+
 namespace Log {
 VideoConsole* console = nullptr;
 
@@ -89,7 +177,7 @@ void WriteN(const char* str, size_t n) {
             }
 
             if (n + logBufferPos > logBufferMaxSize || !CheckInterrupts()) {
-                size_t discard = (n + logBufferPos) - logBufferSize; // Amount of bytes to discard
+                size_t discard = (n + logBufferPos) - logBufferSize; // Discarded bytes to maintain buffer size
 
                 logBufferPos -= discard;
                 memcpy(logBuffer, logBuffer + discard, logBufferPos);
