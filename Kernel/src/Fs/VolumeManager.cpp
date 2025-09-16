@@ -3,6 +3,71 @@
 #include <Fs/FsVolume.h>
 #include <Panic.h>
 
+/*
+
+Observation:
+    
+    1. Redundancy between Mount(FsNode*, const char*) and Mount(FsNode*, FsDriver*, const char*)
+    Problem:
+    The first function simply identifies the driver and calls the second. This is valid, but can cause confusion due to name duplication.
+    
+    Improvement:
+    Rename the first to MountWithAutoDriver(...) or leave it as is but document that it is a helper.
+    
+    Alternatively, unify both functions if the driver can always be identified internally.
+    
+    2. MountSystemVolume() has scanning logic that could be modularized.
+    
+    Problem:
+    The /dev scan function identifies devices and mounts the first one that works. However, this logic is embedded and not reusable.
+    
+    Improvement:
+    Extract the scanning logic into a function like TryMountFromDevice(FsNode*).
+    
+    This allows the scan to be reused in other contexts (e.g., recovery, fallback).
+    
+    3. Using assert() in production
+    
+    "assert(controller->Identify(device));
+    "
+
+    Problem:
+    If Identify() fails, the system aborts. Is this desirable in production?
+    
+    Improvement:
+    Replace with an if (!driver->Identify(device)) and return an error if critical.
+    
+    Use assert() only if the failure involves internal corruption.
+    
+    4. SystemVolume() returns a pointer without actual validation
+    
+    "assert(systemVolume);
+    return systemVolume;
+    "
+    
+    Problem:
+    If systemVolume is not mounted, the system aborts. This can be dangerous if called before MountSystemVolume().
+    
+    Improvement:
+    Return nullptr and let the caller handle the error.
+    
+    Or document that SystemVolume() should only be called after initialization.
+    
+    5. nextVolumeName and nextVolumeID are globals with no persistence.
+    
+    Note:
+    These counters are reset on every boot. If the system supports persistence, they should be saved.
+    
+    Improvement:
+    If persistent metadata is supported, save these values ​​to disk.
+    
+    If not, leave them as is but document that the IDs are not stable between boots.
+
+*/
+
+
+
+
 namespace fs {
 namespace VolumeManager {
 
